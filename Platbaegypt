@@ -5,44 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evidence Plateb Zájezdu</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-    <link rel="manifest" id="my-manifest-placeholder">
     <meta name="theme-color" content="#2563eb">
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-4">
+        <!-- Přehled plateb -->
+        <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-bold">Přehled plateb</h2>
+            </div>
+            <div class="p-4 overflow-x-auto">
+                <table class="w-full" id="summaryTable">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-2 text-left">Jméno</th>
+                            <th class="p-2 text-right">Celková částka</th>
+                            <th class="p-2 text-right">Zaplaceno</th>
+                            <th class="p-2 text-right">Zbývá doplatit</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Formulář pro novou platbu -->
+        <div class="bg-white rounded-lg shadow mb-6">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-bold">Nová platba</h2>
+            </div>
+            <div class="p-4">
+                <form id="paymentForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Datum</label>
+                            <input type="date" id="date" name="date" required 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Plátce</label>
+                            <select id="payer" name="payer" required 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">Vyberte plátce</option>
+                                <option value="Nela">Nela</option>
+                                <option value="David">David</option>
+                                <option value="Filip">Filip</option>
+                                <option value="Irča">Irča</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Částka</label>
+                            <input type="number" id="amount" name="amount" required 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Poznámka</label>
+                            <input type="text" id="note" name="note" 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" 
+                            class="w-full bg-blue-600 text-white rounded-md py-2 px-4 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Přidat platbu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Historie plateb -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-bold">Historie plateb</h2>
+            </div>
+            <div class="p-4 overflow-x-auto">
+                <table class="w-full" id="historyTable">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-2 text-left">Datum</th>
+                            <th class="p-2 text-left">Plátce</th>
+                            <th class="p-2 text-right">Částka</th>
+                            <th class="p-2 text-left">Poznámka</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Manifest pro PWA
-        const manifest = {
-            "name": "Evidence Plateb Zájezdu",
-            "short_name": "Platby Zájezd",
-            "start_url": ".",
-            "display": "standalone",
-            "background_color": "#fff",
-            "theme_color": "#2563eb",
-            "icons": [
-                {
-                    "src": "/api/placeholder/192/192",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                }
-            ]
-        };
-        
-        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        document.querySelector('#my-manifest-placeholder').setAttribute('href', manifestURL);
-
-        // Service Worker pro offline funkcionalitu
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-
-        // Základní data
+        // Počáteční data
         const initialData = {
             participants: [
                 { name: 'Nela', total: 13990, paid: 0 },
@@ -54,132 +108,45 @@
             payments: []
         };
 
-        // Ukládání do localStorage
+        // Načtení dat z localStorage nebo použití počátečních dat
         if (!localStorage.getItem('paymentData')) {
             localStorage.setItem('paymentData', JSON.stringify(initialData));
         }
-    </script>
-</head>
-<body>
-    <div id="app" class="min-h-screen bg-gray-50">
-        <header class="bg-blue-600 text-white shadow">
-            <div class="max-w-7xl mx-auto py-4 px-4">
-                <h1 class="text-2xl font-bold">Evidence Plateb Zájezdu</h1>
-            </div>
-        </header>
 
-        <main class="max-w-7xl mx-auto py-6 px-4">
-            <div class="grid gap-6">
-                <!-- Přehled plateb -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="p-4 border-b">
-                        <h2 class="text-lg font-semibold">Přehled plateb</h2>
-                    </div>
-                    <div class="p-4">
-                        <div class="overflow-x-auto">
-                            <table class="w-full" id="paymentTable">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="p-2 text-left">Jméno</th>
-                                        <th class="p-2 text-right">Celková částka</th>
-                                        <th class="p-2 text-right">Zaplaceno</th>
-                                        <th class="p-2 text-right">Zbývá doplatit</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Formulář pro novou platbu -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="p-4 border-b">
-                        <h2 class="text-lg font-semibold">Nová platba</h2>
-                    </div>
-                    <div class="p-4">
-                        <form id="paymentForm" class="grid gap-4 md:grid-cols-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Datum</label>
-                                <input type="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Plátce</label>
-                                <select required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                                    <option value="">Vyberte plátce</option>
-                                    <option value="Nela">Nela</option>
-                                    <option value="David">David</option>
-                                    <option value="Filip">Filip</option>
-                                    <option value="Irča">Irča</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Částka</label>
-                                <input type="number" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Poznámka</label>
-                                <input type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            </div>
-                            <div class="md:col-span-4">
-                                <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                                    Přidat platbu
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Historie plateb -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="p-4 border-b">
-                        <h2 class="text-lg font-semibold">Historie plateb</h2>
-                    </div>
-                    <div class="p-4">
-                        <div class="overflow-x-auto">
-                            <table class="w-full" id="historyTable">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="p-2 text-left">Datum</th>
-                                        <th class="p-2 text-left">Plátce</th>
-                                        <th class="p-2 text-right">Částka</th>
-                                        <th class="p-2 text-left">Poznámka</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <script>
-        // Funkce pro formátování částky
+        // Formátování částky
         function formatAmount(amount) {
-            return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK' }).format(amount);
+            return new Intl.NumberFormat('cs-CZ', { 
+                style: 'currency', 
+                currency: 'CZK',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2 
+            }).format(amount);
         }
 
-        // Funkce pro aktualizaci tabulky
+        // Formátování data
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return new Intl.DateTimeFormat('cs-CZ').format(date);
+        }
+
+        // Aktualizace tabulek
         function updateTables() {
             const data = JSON.parse(localStorage.getItem('paymentData'));
             
             // Aktualizace přehledu
-            const paymentTableBody = document.querySelector('#paymentTable tbody');
-            paymentTableBody.innerHTML = '';
+            const summaryTableBody = document.querySelector('#summaryTable tbody');
+            summaryTableBody.innerHTML = '';
             
             data.participants.forEach(participant => {
                 const row = document.createElement('tr');
+                const remaining = participant.total - participant.paid;
                 row.innerHTML = `
                     <td class="p-2 border-t">${participant.name}</td>
                     <td class="p-2 border-t text-right">${formatAmount(participant.total)}</td>
                     <td class="p-2 border-t text-right">${formatAmount(participant.paid)}</td>
-                    <td class="p-2 border-t text-right ${participant.total - participant.paid > 0 ? 'text-red-600' : 'text-green-600'}">${formatAmount(participant.total - participant.paid)}</td>
+                    <td class="p-2 border-t text-right ${remaining > 0 ? 'text-red-600' : 'text-green-600'}">${formatAmount(remaining)}</td>
                 `;
-                paymentTableBody.appendChild(row);
+                summaryTableBody.appendChild(row);
             });
 
             // Přidání řádku se zálohou
@@ -190,22 +157,37 @@
                 <td class="p-2 border-t text-right">${formatAmount(data.deposit.paid)}</td>
                 <td class="p-2 border-t text-right">${formatAmount(0)}</td>
             `;
-            paymentTableBody.appendChild(depositRow);
+            summaryTableBody.appendChild(depositRow);
+
+            // Přidání celkového součtu
+            const totalPaid = data.participants.reduce((sum, p) => sum + p.paid, 0) + data.deposit.paid;
+            const totalAmount = data.participants.reduce((sum, p) => sum + p.total, 0) + data.deposit.total;
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'font-bold bg-gray-100';
+            totalRow.innerHTML = `
+                <td class="p-2 border-t">CELKEM</td>
+                <td class="p-2 border-t text-right">${formatAmount(totalAmount)}</td>
+                <td class="p-2 border-t text-right">${formatAmount(totalPaid)}</td>
+                <td class="p-2 border-t text-right ${totalAmount - totalPaid > 0 ? 'text-red-600' : 'text-green-600'}">${formatAmount(totalAmount - totalPaid)}</td>
+            `;
+            summaryTableBody.appendChild(totalRow);
 
             // Aktualizace historie
             const historyTableBody = document.querySelector('#historyTable tbody');
             historyTableBody.innerHTML = '';
             
-            data.payments.forEach(payment => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="p-2 border-t">${payment.date}</td>
-                    <td class="p-2 border-t">${payment.payer}</td>
-                    <td class="p-2 border-t text-right">${formatAmount(payment.amount)}</td>
-                    <td class="p-2 border-t">${payment.note || ''}</td>
-                `;
-                historyTableBody.appendChild(row);
-            });
+            if (data.payments && data.payments.length > 0) {
+                data.payments.slice().reverse().forEach(payment => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-2 border-t">${formatDate(payment.date)}</td>
+                        <td class="p-2 border-t">${payment.payer}</td>
+                        <td class="p-2 border-t text-right">${formatAmount(payment.amount)}</td>
+                        <td class="p-2 border-t">${payment.note || ''}</td>
+                    `;
+                    historyTableBody.appendChild(row);
+                });
+            }
         }
 
         // Zpracování formuláře
@@ -213,22 +195,30 @@
             e.preventDefault();
             
             const data = JSON.parse(localStorage.getItem('paymentData'));
-            const formData = new FormData(e.target);
             
             const payment = {
-                date: formData.get('date'),
-                payer: formData.get('payer'),
-                amount: Number(formData.get('amount')),
-                note: formData.get('note')
+                date: document.getElementById('date').value,
+                payer: document.getElementById('payer').value,
+                amount: Number(document.getElementById('amount').value),
+                note: document.getElementById('note').value || ''
             };
 
+            // Kontrola vyplnění povinných polí
+            if (!payment.date || !payment.payer || !payment.amount) {
+                alert('Prosím vyplňte všechna povinná pole (datum, plátce a částka)');
+                return;
+            }
+
             // Přidání platby do historie
+            if (!data.payments) {
+                data.payments = [];
+            }
             data.payments.push(payment);
 
             // Aktualizace zaplacené částky
             const participant = data.participants.find(p => p.name === payment.payer);
             if (participant) {
-                participant.paid += payment.amount;
+                participant.paid = (participant.paid || 0) + payment.amount;
             }
 
             // Uložení dat
@@ -238,7 +228,7 @@
             updateTables();
             
             // Reset formuláře
-            e.target.reset();
+            this.reset();
         });
 
         // Inicializace tabulek
