@@ -11,8 +11,17 @@
     <div class="max-w-4xl mx-auto p-4">
         <!-- Přehled plateb -->
         <div class="bg-white rounded-lg shadow mb-6">
-            <div class="p-4 border-b">
+            <div class="p-4 border-b flex justify-between items-center">
                 <h2 class="text-xl font-bold">Přehled plateb</h2>
+                <div class="space-x-2">
+                    <button onclick="exportData()" class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700">
+                        Zálohovat data
+                    </button>
+                    <button onclick="document.getElementById('importInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Nahrát zálohu
+                    </button>
+                    <input type="file" id="importInput" accept=".json" style="display: none" onchange="importData(this)">
+                </div>
             </div>
             <div class="p-4 overflow-x-auto">
                 <table class="w-full" id="summaryTable">
@@ -129,6 +138,45 @@
             return new Intl.DateTimeFormat('cs-CZ').format(date);
         }
 
+        // Funkce pro export dat
+        function exportData() {
+            const data = localStorage.getItem('paymentData');
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const date = new Date().toISOString().split('T')[0];
+            a.href = url;
+            a.download = `platby-zajezd-zaloha-${date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Funkce pro import dat
+        function importData(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.participants && data.deposit && data.payments) {
+                            localStorage.setItem('paymentData', JSON.stringify(data));
+                            updateTables();
+                            alert('Data byla úspěšně nahrána');
+                        } else {
+                            alert('Neplatný formát souboru se zálohou');
+                        }
+                    } catch (error) {
+                        alert('Chyba při načítání souboru');
+                    }
+                };
+                reader.readAsText(file);
+            }
+            input.value = ''; // Reset input
+        }
+
         // Aktualizace tabulek
         function updateTables() {
             const data = JSON.parse(localStorage.getItem('paymentData'));
@@ -137,6 +185,7 @@
             const summaryTableBody = document.querySelector('#summaryTable tbody');
             summaryTableBody.innerHTML = '';
             
+            // Zobrazení jednotlivých účastníků
             data.participants.forEach(participant => {
                 const row = document.createElement('tr');
                 const remaining = participant.total - participant.paid;
@@ -159,7 +208,43 @@
             `;
             summaryTableBody.appendChild(depositRow);
 
-            // Aktualizace historie
+            // Výpočet celkových součtů
+            const totalPaid = data.participants.reduce((sum, p) => sum + (p.paid || 0), 0) + data.deposit.paid;
+            const totalAmount = data.participants.reduce((sum, p) => sum + p.total, 0) + data.deposit.total;
+            const totalRemaining = totalAmount - totalPaid;
+
+            // Přidání řádku s celkovými součty
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'font-bold bg-gray-100 text-lg';  // Zvýrazněný řádek
+            totalRow.innerHTML = `
+                <td class="p-3 border-t border-gray-300">CELKEM</td>
+                <td class="p-3 border-t border-gray-300 text-right">${formatAmount(totalAmount)}</td>
+                <td class="p-3 border-t border-gray-300 text-right">${formatAmount(totalPaid)}</td>
+                <td class="p-3 border-t border-gray-300 text-right ${totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}">${formatAmount(totalRemaining)}</td>
+            `;
+            summaryTableBody.appendChild(totalRow);
+
+            // Výpis celkové částky nad tabulkou
+            const summaryBox = document.createElement('div');
+            summaryBox.className = 'p-4 bg-blue-50 mb-4 rounded-lg';
+            summaryBox.innerHTML = `
+                <div class="text-lg">
+                    <span class="font-bold">Celková částka zájezdu:</span> ${formatAmount(totalAmount)}
+                </div>
+                <div class="mt-2">
+                    <span class="font-bold">Celkem zaplaceno:</span> ${formatAmount(totalPaid)}
+                </div>
+                <div class="mt-2">
+                    <span class="font-bold">Zbývá doplatit:</span> 
+                    <span class="${totalRemaining > 0 ? 'text-red-600' : 'text-green-600'} font-bold">
+                        ${formatAmount(totalRemaining)}
+                    </span>
+                </div>
+            `;
+            const tableContainer = summaryTableBody.closest('.p-4');
+            tableContainer.insertBefore(summaryBox, tableContainer.firstChild);
+
+            // Aktualizace historie plateb
             const historyTableBody = document.querySelector('#historyTable tbody');
             historyTableBody.innerHTML = '';
             
